@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Clásica &amp; Apuntado 101 — Mesa de Cartas</title>
+    <link rel="stylesheet" href="/css/styles.css?v=2">
+</head>
+<body>
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- ==================== PANTALLA DE LOBBY ==================== -->
+    <main id="lobby-screen" class="lobby-screen">
+        <header class="lobby-header">
+            <div class="brand-badge">♠ ♥ ♦ ♣</div>
+            <h1>Clásica &amp; Apuntado 101</h1>
+            <p class="subtitle">Juego multijugador en tiempo real — 2 a 16 jugadores · 1 a 4 barajas (4 por baraja)</p>
+        </header>
+
+        <!-- Banner de reconexión automática si existe sesión previa en localStorage -->
+        <section id="reconnect-banner" class="reconnect-banner hidden">
+            <div class="reconnect-info">
+                <strong>Sesión activa detectada</strong>
+                <span id="reconnect-details">Sala ------</span>
+            </div>
+            <div class="reconnect-actions">
+                <button id="btn-reconnect-saved" class="btn btn-primary" type="button">Reconectar</button>
+                <button id="btn-clear-saved" class="btn btn-ghost" type="button">Descartar</button>
+            </div>
+        </section>
+
+        <section class="lobby-grid">
+            <!-- Panel Crear Sala -->
+            <form id="create-room-form" class="card-panel">
+                <h2>Crear Nueva Sala</h2>
+
+                <label class="field">
+                    <span>Tu nombre</span>
+                    <input id="create-host-name" type="text" maxlength="24" placeholder="Ej. Mateo" required>
+                </label>
+
+                <div class="field-row">
+                    <label class="field">
+                        <span>Modalidad</span>
+                        <select id="cfg-mode">
+                            <option value="CLASSIC">Clásica (Regular)</option>
+                            <option value="APUNTADO">Apuntado a 101</option>
+                            <option value="MIXED">Mixto (Regular o Apuntado)</option>
+                        </select>
+                    </label>
+                    <label class="field">
+                        <span>Límite eliminación</span>
+                        <select id="cfg-elimination">
+                            <option value="51">51 pts</option>
+                            <option value="101" selected>101 pts</option>
+                            <option value="151">151 pts</option>
+                            <option value="201">201 pts</option>
+                            <option value="251">251 pts</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="field-row">
+                    <label class="field">
+                        <span>Máx. jugadores (2-16)</span>
+                        <input id="cfg-max-players" type="number" min="2" max="16" value="4" required>
+                    </label>
+                    <label class="field">
+                        <span>Barajas (1-4)</span>
+                        <input id="cfg-deck-count" type="number" min="1" max="4" value="2" required>
+                    </label>
+                </div>
+                <p id="deck-hint" class="field-hint">Para 4 jugadores se requiere mínimo 1 baraja (máx. 4 por baraja; impares: reverso rojo, pares: azul).</p>
+
+                <div id="apuntado-limit-group">
+                    <label class="field">
+                        <span>Límite cierre Apuntado (3-3-3 + sobrante menor que)</span>
+                        <input id="cfg-apuntado-limit" type="number" min="2" max="26" value="5" required>
+                    </label>
+                    <p id="apuntado-limit-hint" class="field-hint">Por defecto &lt; 5 (3-3-3 + 1 carta sobrante de 1 a 4 pts; se suma a quien cierra).</p>
+                </div>
+
+                <label class="field">
+                    <span>Valor de cartas</span>
+                    <select id="cfg-value-policy">
+                        <option value="STANDARD">Estándar (A=1, 2-10 nominal, J/Q/K=10, Joker=25)</option>
+                        <option value="ACE_TEN">As en 10 (A=10, J/Q/K=10, Joker=25)</option>
+                        <option value="ACE_ELEVEN">As en 11 (A=11, J/Q/K=10, Joker=25)</option>
+                        <option value="FACE_SEQUENTIAL">Figuras secuenciales (A=1, J=11, Q=12, K=13, Joker=25)</option>
+                    </select>
+                </label>
+
+                <label class="field">
+                    <span>Política de escaleras</span>
+                    <select id="cfg-cycle-policy">
+                        <option value="CYCLIC">Cíclica (permite vuelta K-A-2)</option>
+                        <option value="LINEAR">Lineal con As bajo o alto (A-2-3 y Q-K-A)</option>
+                        <option value="LINEAR_ACE_LOW">Lineal estricta (solo A-2-...-K)</option>
+                    </select>
+                </label>
+
+                <label class="checkbox-field">
+                    <input id="cfg-jokers" type="checkbox" checked>
+                    <span>Incluir Jokers (2 por baraja)</span>
+                </label>
+
+                <button type="submit" class="btn btn-primary btn-block">Crear Sala</button>
+            </form>
+
+            <!-- Panel Unirse a Sala -->
+            <form id="join-room-form" class="card-panel">
+                <h2>Unirse a una Sala</h2>
+                <p class="panel-desc">Ingresa el código alfanumérico de 6 dígitos compartido por el anfitrión.</p>
+
+                <label class="field">
+                    <span>Tu nombre</span>
+                    <input id="join-player-name" type="text" maxlength="24" placeholder="Ej. Sofía" required>
+                </label>
+
+                <label class="field">
+                    <span>Código de sala (6 dígitos)</span>
+                    <input id="join-room-code" class="code-input" type="text" maxlength="6" minlength="6"
+                           placeholder="A7K9P2" autocomplete="off" required>
+                </label>
+
+                <div id="room-preview" class="room-preview hidden"></div>
+
+                <button type="submit" class="btn btn-secondary btn-block">Unirse a la Mesa</button>
+            </form>
+        </section>
+    </main>
+
+    <!-- ==================== MESA DE JUEGO ==================== -->
+    <section id="game-screen" class="game-screen hidden">
+        <header class="top-bar">
+            <div class="top-bar-left">
+                <button id="btn-copy-code" class="room-pill" type="button" title="Copiar código de sala">
+                    Sala <strong id="hud-room-code">------</strong> 📋
+                </button>
+                <span id="hud-mode-badge" class="badge">Clásica</span>
+                <span id="hud-round-badge" class="badge badge-muted">Ronda 0</span>
+                <span id="hud-limit-badge" class="badge badge-muted">Límite 101</span>
+            </div>
+            <div class="top-bar-right">
+                <span id="ws-status" class="ws-status ws-offline">● Desconectado</span>
+                <button id="btn-leave-room" class="btn btn-ghost btn-sm" type="button">Salir</button>
+            </div>
+        </header>
+
+        <!-- Sala de Espera (cuando estado === ESPERANDO) -->
+        <section id="waiting-panel" class="waiting-panel hidden">
+            <div class="waiting-card">
+                <h2>Sala de Espera</h2>
+                <p>Comparte el código <strong id="waiting-room-code" class="code-highlight">------</strong> con los demás jugadores.</p>
+                <div id="waiting-config-summary" class="config-pills"></div>
+                <div id="waiting-players-list" class="waiting-players"></div>
+                <div class="waiting-actions">
+                    <button id="btn-start-game" class="btn btn-primary hidden" type="button">Iniciar Partida</button>
+                    <p id="waiting-hint" class="field-hint">Esperando al menos 2 jugadores para iniciar...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Mesa Activa -->
+        <div id="active-table" class="active-table hidden">
+            <!-- Oponentes y Marcador -->
+            <section id="opponents-area" class="opponents-area" aria-label="Jugadores y puntajes"></section>
+
+            <!-- Centro de la Mesa: Mazo, Pozo de Descarte y Controles -->
+            <section class="table-center">
+                <div class="piles-wrapper">
+                    <div class="pile-box">
+                        <span class="pile-label">Mazo (<span id="deck-count">0</span>)</span>
+                        <button id="btn-draw-deck" class="pile-slot deck-pile" type="button" disabled>
+                            <img id="deck-top-img" src="/assets/cards/cardback/cardback_red.png" alt="Mazo de robo">
+                        </button>
+                    </div>
+
+                    <div class="turn-status-box">
+                        <div id="turn-banner" class="turn-banner">Esperando turno...</div>
+                        <div class="action-buttons">
+                            <button id="btn-discard" class="btn btn-warning" type="button" disabled>
+                                Descartar seleccionada
+                            </button>
+                            <button id="btn-declare-close" class="btn btn-success" type="button" disabled>
+                                Declarar Cierre
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="pile-box">
+                        <span class="pile-label">Pozo de Descarte</span>
+                        <button id="btn-draw-discard" class="pile-slot discard-pile" type="button" disabled>
+                            <img id="discard-top-img" class="hidden" src="" alt="Última carta descartada">
+                            <span id="discard-empty-label" class="pile-empty">Vacío</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tablero del Jugador: 10 Casillas Apilables -->
+            <section class="player-dock">
+                <div class="dock-toolbar">
+                    <div class="dock-title">
+                        <strong>Tu Mano (<span id="hand-count">0</span> cartas)</strong>
+                        <span class="dock-tip">Toca una carta y luego una casilla (o arrástrala) para apilar tus juegos localmente.</span>
+                    </div>
+                    <div class="dock-controls">
+                        <button id="btn-sort-suit" class="btn btn-ghost btn-sm" type="button">Ordenar por Palo</button>
+                        <button id="btn-sort-rank" class="btn btn-ghost btn-sm" type="button">Ordenar por Valor</button>
+                        <button id="btn-spread-slots" class="btn btn-ghost btn-sm" type="button">Distribuir</button>
+                    </div>
+                </div>
+                <div id="hand-board" class="hand-board" aria-label="Tablero de 10 casillas apilables"></div>
+            </section>
+        </div>
+    </section>
+
+    <!-- ==================== MODAL ELECCIÓN DE CIERRE (MODO MIXTO) ==================== -->
+    <div id="close-mode-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+        <div class="modal-card">
+            <h2>Declarar Cierre — Modo Mixto</h2>
+            <p class="summary-subtitle">Elige con qué reglas deseas validar y cerrar esta ronda:</p>
+            <div class="close-mode-grid">
+                <button id="btn-close-as-classic" class="close-mode-option" type="button">
+                    <strong>Cerrar por Regular (Clásica)</strong>
+                    <span>4 Jokers (-25), Escalera de 10 (-25), 7+3 (-20), 6+4 (-15) o 4+3+3 (-10).</span>
+                </button>
+                <button id="btn-close-as-apuntado" class="close-mode-option" type="button">
+                    <strong>Cerrar por Apuntado</strong>
+                    <span id="close-as-apuntado-desc">3 ternas armadas + sobrante menor a 5 pts (suma los puntos de la carta sobrante).</span>
+                </button>
+            </div>
+            <div class="modal-actions">
+                <button id="btn-cancel-close-mode" class="btn btn-ghost" type="button">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL RESUMEN DE RONDA / FIN DE PARTIDA ==================== -->
+    <div id="summary-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+        <div class="modal-card">
+            <h2 id="summary-title">Resumen de Ronda</h2>
+            <p id="summary-subtitle" class="summary-subtitle"></p>
+            <table class="score-table">
+                <thead>
+                    <tr>
+                        <th>Jugador</th>
+                        <th>Ronda</th>
+                        <th>Acumulado</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="summary-table-body"></tbody>
+            </table>
+            <div class="modal-actions">
+                <button id="btn-close-summary" class="btn btn-primary" type="button">Continuar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/board.js?v=7"></script>
+    <script src="/js/app.js?v=7"></script>
+</body>
+</html>
