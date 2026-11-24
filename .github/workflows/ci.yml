@@ -26,3 +26,13 @@ jobs:
 
       - name: Ejecutar Fitness Functions de arquitectura
         run: mvn test -Dtest=ArchitectureFitnessTest,TransportIsolationTest
+
+      - name: Empaquetar artefacto JAR (CD)
+        run: mvn package -DskipTests
+
+      - name: Subir artefacto JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: juego-cartas-jar
+          path: target/*.jar
+          if-no-files-found: error
