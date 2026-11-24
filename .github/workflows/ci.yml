@@ -1,0 +1,28 @@
+name: CI - Fitness Functions y Calidad
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  gobernanza-arquitectonica:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar codigo del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+          cache: "maven"
+
+      - name: Ejecutar compilacion y verificacion Maven
+        run: mvn clean verify
+
+      - name: Ejecutar Fitness Functions de arquitectura
+        run: mvn test -Dtest=ArchitectureFitnessTest,TransportIsolationTest
